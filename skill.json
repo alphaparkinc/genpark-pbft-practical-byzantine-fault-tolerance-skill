@@ -1,0 +1,17 @@
+{
+  "name": "genpark-pbft-practical-byzantine-fault-tolerance-skill",
+  "version": "1.0.0",
+  "description": "Autonomous Agent Practical Byzantine Fault Tolerance (PBFT) Three-Phase Consensus Protocol",
+  "entry_point": "client.py",
+  "example": "example_usage.py",
+  "mcp_server": "mcp_server.py",
+  "dependencies": [],
+  "tags": [
+    "genpark-skill",
+    "agentic-ai",
+    "distributed-systems",
+    "pbft-consensus",
+    "byzantine-fault-tolerance",
+    "quorum-protocols"
+  ]
+}
