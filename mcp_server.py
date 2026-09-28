@@ -1,53 +1,63 @@
-"""MCP Server for PBFT Consensus Skill."""
-import json
 import sys
-from client import PBFTCluster
+import json
+from client import PBFTNode
+
+node = PBFTNode("node_0", total_nodes=4, f=1)
+
+def handle_request(req):
+    method = req.get("method")
+    params = req.get("params", {})
+    req_id = req.get("id")
+
+    if method == "tools/list":
+        return {
+            "jsonrpc": "2.0",
+            "id": req_id,
+            "result": {
+                "tools": [
+                    {
+                        "name": "pbft_consensus_step",
+                        "description": "Feed PBFT message (pre-prepare, prepare, commit) and check phase advancement",
+                        "inputSchema": {
+                            "type": "object",
+                            "properties": {
+                                "phase": {"type": "string", "enum": ["pre_prepare", "prepare", "commit"]},
+                                "view": {"type": "integer"},
+                                "seq": {"type": "integer"},
+                                "sender": {"type": "string"},
+                                "payload": {"type": "string"}
+                            },
+                            "required": ["phase", "view", "seq"]
+                        }
+                    }
+                ]
+            }
+        }
+    elif method == "tools/call":
+        name = params.get("name")
+        args = params.get("arguments", {})
+        if name == "pbft_consensus_step":
+            ph = args["phase"]
+            v = args["view"]
+            s = args["seq"]
+            if ph == "pre_prepare":
+                ok = node.receive_pre_prepare(v, s, args.get("payload", ""))
+                return {"jsonrpc": "2.0", "id": req_id, "result": {"content": [{"type": "text", "text": json.dumps({"phase": "pre_prepare", "accepted": ok})}]}}
+            elif ph == "prepare":
+                prepared = node.receive_prepare(v, s, args.get("sender", "anon"))
+                return {"jsonrpc": "2.0", "id": req_id, "result": {"content": [{"type": "text", "text": json.dumps({"phase": "prepare", "prepared": prepared})}]}}
+            elif ph == "commit":
+                committed = node.receive_commit(v, s, args.get("sender", "anon"))
+                return {"jsonrpc": "2.0", "id": req_id, "result": {"content": [{"type": "text", "text": json.dumps({"phase": "commit", "committed": committed})}]}}
+    return {"jsonrpc": "2.0", "id": req_id, "error": {"code": -32601, "message": "Method not found"}}
 
 def main():
     for line in sys.stdin:
-        if not line.strip():
-            continue
-        try:
+        if line.strip():
             req = json.loads(line)
-            req_id = req.get("id")
-            method = req.get("method")
-            params = req.get("params", {})
-
-            if method == "tools/list":
-                res = {
-                    "jsonrpc": "2.0",
-                    "id": req_id,
-                    "result": {
-                        "tools": [{
-                            "name": "run_pbft_consensus",
-                            "description": "Execute PBFT 3-phase consensus round with Byzantine tolerance",
-                            "inputSchema": {
-                                "type": "object",
-                                "properties": {
-                                    "num_nodes": {"type": "integer"},
-                                    "request": {"type": "string"},
-                                    "faulty_nodes": {"type": "array", "items": {"type": "integer"}}
-                                },
-                                "required": ["num_nodes", "request"]
-                            }
-                        }]
-                    }
-                }
-            elif method == "tools/call":
-                args = params.get("arguments", {})
-                cluster = PBFTCluster(args["num_nodes"])
-                out = cluster.consensus_round(args["request"], args.get("faulty_nodes"))
-                res = {
-                    "jsonrpc": "2.0",
-                    "id": req_id,
-                    "result": {"content": [{"type": "text", "text": json.dumps(out)}]}
-                }
-            else:
-                res = {"jsonrpc": "2.0", "id": req_id, "error": {"code": -32601, "message": "Method not found"}}
-            print(json.dumps(res), flush=True)
-        except Exception as e:
-            err = {"jsonrpc": "2.0", "id": None, "error": {"code": -32000, "message": str(e)}}
-            print(json.dumps(err), flush=True)
+            res = handle_request(req)
+            sys.stdout.write(json.dumps(res) + "\n")
+            sys.stdout.flush()
 
 if __name__ == "__main__":
     main()
