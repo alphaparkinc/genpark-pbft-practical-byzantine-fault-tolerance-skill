@@ -1,40 +1,29 @@
+"""Practical Byzantine Fault Tolerance (PBFT) Engine.
+100% Python Standard Library.
 """
-Autonomous Agent PBFT (Practical Byzantine Fault Tolerance) Skill
-Pure Python Standard Library implementation.
-"""
-from typing import List, Dict, Any, Set
 
-class PBFTCluster:
-    """
-    PBFT 3-Phase Consensus Cluster (Pre-Prepare, Prepare, Commit).
-    """
-    def __init__(self, num_nodes: int):
-        self.n = num_nodes
-        self.f = (num_nodes - 1) // 3
+import collections
+
+class PBFTNode:
+    """PBFT state machine replication node with 3-phase consensus."""
+    def __init__(self, node_id, total_nodes=4, f=1):
+        self.node_id = node_id
+        self.f = f
         self.view = 0
-        self.primary = 0
-        self.logs = {i: [] for i in range(num_nodes)}
+        self.pre_prepare_log = {}
+        self.prepare_votes = collections.defaultdict(set)
+        self.commit_votes = collections.defaultdict(set)
 
-    def consensus_round(self, request: str, faulty_nodes: List[int] = None) -> Dict[str, Any]:
-        faulty = set(faulty_nodes or [])
-        quorum_needed = 2 * self.f + 1
+    def receive_pre_prepare(self, view, seq, req):
+        if view == self.view:
+            self.pre_prepare_log[seq] = req
+            return True
+        return False
 
-        prepares = sum(1 for i in range(self.n) if i not in faulty)
-        prepared = prepares >= quorum_needed
+    def receive_prepare(self, view, seq, sender_id):
+        self.prepare_votes[(seq, view)].add(sender_id)
+        return len(self.prepare_votes[(seq, view)]) >= 2 * self.f
 
-        commits = sum(1 for i in range(self.n) if i not in faulty)
-        committed = prepared and (commits >= quorum_needed)
-
-        if committed:
-            for i in range(self.n):
-                if i not in faulty:
-                    self.logs[i].append(request)
-
-        return {
-            "committed": committed,
-            "quorum_needed": quorum_needed,
-            "honest_nodes": self.n - len(faulty),
-            "max_byzantine_faults": self.f,
-            "request": request,
-            "view": self.view
-        }
+    def receive_commit(self, view, seq, sender_id):
+        self.commit_votes[(seq, view)].add(sender_id)
+        return len(self.commit_votes[(seq, view)]) >= 2 * self.f + 1
