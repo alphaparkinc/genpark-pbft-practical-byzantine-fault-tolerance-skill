@@ -1,0 +1,6 @@
+name: genpark-pbft-practical-byzantine-fault-tolerance-skill
+version: 1.0.0
+description: Practical Byzantine Fault Tolerance (PBFT) state machine replication engine with 3-phase view consensus
+command: python
+args:
+  - mcp_server.py
