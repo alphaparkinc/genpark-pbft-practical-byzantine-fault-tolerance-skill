@@ -1,0 +1,11 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "genpark-pbft-practical-byzantine-fault-tolerance-skill"
+version = "1.0.0"
+description = "Practical Byzantine Fault Tolerance (PBFT) state machine replication engine with 3-phase view consensus"
+readme = "README.md"
+requires-python = ">=3.9"
+dependencies = []
